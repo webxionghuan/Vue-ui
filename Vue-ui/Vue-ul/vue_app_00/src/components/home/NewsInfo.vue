@@ -1,0 +1,148 @@
+<template>
+    <div class="app-newsinfo">
+        <!----新闻详情---->
+        <div class="mui-card">
+            <div class="mui-card-header mui-card-media" :style="'height:40vw;background-image:url('+info.img_url+')'"></div>
+            <div class="mui-card-content">
+                <div class="mui-card-content-inner">
+                    <p>{{info.ctime | dateTimeFilter}}</p>
+                    <p style="color: #333;">{{info.content}}</p>
+                </div>
+            </div>
+            <div class="mui-card-footer">
+                <a class="mui-card-link">Like</a>
+                <a class="mui-card-link">Read more</a>
+            </div>
+            <!--新闻评论-->
+            <div class="mui-card">
+				<div class="mui-card-header"></div>
+				<div class="mui-card-content">
+					<div class="mui-card-content-inner">
+						<textarea maxlength="120" placeholder="请吐槽最多120个字" v-model="msg">
+                        </textarea>
+                        <mt-button size="large" type="primary" @click="addComment">发表评论</mt-button>
+					</div>
+				</div>
+				<div class="mui-card-footer"></div>
+			</div>
+        </div>
+        
+        <!-- 新闻发表评论  end -->
+        <!-- 新闻评论列表   staart -->
+        <div class="mui-card">
+            <div class="mui-card-content">
+                <div class="mui-card-content-inner">
+                    <div class="cmt-list">
+                        <div class="cmt-item" v-for="(item,i) of list">
+                            <div>第{{i+1}}楼 发表时间:{{item.ctime | dateTimeFilter}}</div>
+                            <div>评论内容:{{item.content}}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 新闻评论列表  end -->
+
+         <!--加载更多..-->
+         <mt-button @click="loadMore" size="large" type="primary">加载更多</mt-button>
+    </div>
+</template>
+
+<script>
+import {Toast} from "mint-ui"
+export default {
+    data(){
+        return {
+            nid:this.$route.query.nid,
+            info:{}, //新闻的详细对象
+            msg:"",//获取的评论
+            list:[], //评论的内容
+            pno:0,   //页码
+            pageSize:5, //页大小
+        }
+    },
+    created(){
+       this.findNewsInfo();
+       this.loadMore();
+    },
+    methods:{
+        //查询新闻的详细信息
+        findNewsInfo(){
+            //1.获取新闻编号
+                var id=this.nid;
+            //2.创建url保存请求地址
+            var url="http://127.0.0.1:3000/newsInfo?nid="+id;
+            //3.发送ajax请求
+            this.axios.get(url).then(result=>{
+                //4.获取服务器返回数据保存 info
+                this.info=result.data.data[0];
+            })   
+        },
+        
+       addComment(){
+            //添加评论
+            //1:评论内容双向绑定
+            //2:评论按钮绑定点击时间调用addComment
+            //3:获取新闻nid 获取评论内容
+            var nid=this.nid;
+            var con=this.msg;
+            //console.log(nid+":"+con);
+            //4:去除评论两端空格
+            var size = con.trim().length;
+            //5:如果评论为空提示判断
+            if(size==0){
+                Toast("评论内容不能为空");
+                return;
+            }
+            //6:创建postData保存新闻nid评论内容
+            var postData = this.qs.stringify({
+                nid:nid,
+                content:con
+            });
+                //console.log(postData);
+            //7:发送post请求欧/addComment
+            var url = "http://127.0.0.1:3000/addcomment";
+            this.axios.post(url,postData).then(result=>{
+            //8:获取返回结果
+            Toast("添加成功");
+            //9:评论成功或失败 消息
+            //10:清空原有评论内容
+            this.msg=" ";
+            //11:加载评论列表
+            this.pno=0;    //清空页码
+            this.list=[];  //清空原有数据
+            this.loadMore();  //第一页
+            })
+        },
+        //更多评论
+        loadMore(){
+            //1:在data 添加几个数据
+            //list:[] pno:0 pageSize:5
+            //2:获取pno,pageSize
+            this.pno++;
+            var ps=this.pageSize;
+            //3:正则表达式验证pno和pageSize是否正确
+            var reg=/^[0-9]{1,}$/;
+            //4:如果不正确提示
+            if(!reg.test(this.pno)){
+                Toast("页码格式不正确");
+                return;
+            }
+            //console.log(this.pno+":"+ps);
+            //5:创建url 发送ajax请求
+            var url="http://127.0.0.1:3000/getComment?nid="+this.nid+"&pno="+this.pno;
+            this.axios.get(url).then(result=>{
+                //6:获取返回内容
+                //7:保存list
+                var row=this.list.concat(result.data.data);
+                this.list=row;
+            })
+
+        }
+    }
+}
+</script>
+
+<style>
+
+</style>
